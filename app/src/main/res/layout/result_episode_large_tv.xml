@@ -3,6 +3,7 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
 
+        android:nextFocusRight="@id/result_episode_download"
         android:id="@+id/episode_holder_large"
 
         android:layout_width="wrap_content"
@@ -73,7 +74,7 @@
 
                     <com.google.android.material.button.MaterialButton
                             android:layout_gravity="start"
-                            style="@style/SmallWhiteButton"
+                            style="@style/SmallBlackButton"
                             android:layout_marginEnd="10dp"
                             android:text="@string/filler"
                             android:id="@+id/episode_filler" />

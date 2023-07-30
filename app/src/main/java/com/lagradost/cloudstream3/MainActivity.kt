@@ -1,7 +1,5 @@
 package com.lagradost.cloudstream3
 
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -16,13 +14,9 @@ import android.view.*
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.IdRes
-import androidx.annotation.MainThread
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.animation.addListener
-import androidx.core.view.ViewCompat
-import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
@@ -38,7 +32,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.android.gms.cast.framework.*
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.navigationrail.NavigationRailView
 import com.google.android.material.snackbar.Snackbar
@@ -56,9 +49,6 @@ import com.lagradost.cloudstream3.CommonActivity.onDialogDismissedEvent
 import com.lagradost.cloudstream3.CommonActivity.onUserLeaveHint
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.CommonActivity.updateLocale
-import com.lagradost.cloudstream3.databinding.ActivityMainBinding
-import com.lagradost.cloudstream3.databinding.ActivityMainTvBinding
-import com.lagradost.cloudstream3.databinding.BottomResultviewPreviewBinding
 import com.lagradost.cloudstream3.mvvm.*
 import com.lagradost.cloudstream3.network.initClient
 import com.lagradost.cloudstream3.plugins.PluginManager
@@ -84,7 +74,6 @@ import com.lagradost.cloudstream3.ui.result.ResultViewModel2
 import com.lagradost.cloudstream3.ui.result.START_ACTION_RESUME_LATEST
 import com.lagradost.cloudstream3.ui.result.setImage
 import com.lagradost.cloudstream3.ui.result.setText
-import com.lagradost.cloudstream3.ui.result.txt
 import com.lagradost.cloudstream3.ui.search.SearchFragment
 import com.lagradost.cloudstream3.ui.search.SearchResultBuilder
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isEmulatorSettings
@@ -97,14 +86,12 @@ import com.lagradost.cloudstream3.ui.setup.SetupFragmentExtensions
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.html
 import com.lagradost.cloudstream3.utils.AppUtils.isCastApiAvailable
-import com.lagradost.cloudstream3.utils.AppUtils.isLtr
 import com.lagradost.cloudstream3.utils.AppUtils.isNetworkAvailable
 import com.lagradost.cloudstream3.utils.AppUtils.loadCache
 import com.lagradost.cloudstream3.utils.AppUtils.loadRepository
 import com.lagradost.cloudstream3.utils.AppUtils.loadResult
 import com.lagradost.cloudstream3.utils.AppUtils.loadSearchResult
 import com.lagradost.cloudstream3.utils.AppUtils.setDefaultFocus
-import com.lagradost.cloudstream3.utils.BackupUtils.backup
 import com.lagradost.cloudstream3.utils.BackupUtils.setUpBackup
 import com.lagradost.cloudstream3.utils.Coroutines.ioSafe
 import com.lagradost.cloudstream3.utils.Coroutines.main
@@ -121,17 +108,17 @@ import com.lagradost.cloudstream3.utils.UIHelper.getResourceColor
 import com.lagradost.cloudstream3.utils.UIHelper.hideKeyboard
 import com.lagradost.cloudstream3.utils.UIHelper.navigate
 import com.lagradost.cloudstream3.utils.UIHelper.requestRW
-import com.lagradost.cloudstream3.utils.UIHelper.toPx
 import com.lagradost.nicehttp.Requests
 import com.lagradost.nicehttp.ResponseParser
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.bottom_resultview_preview.*
+import kotlinx.android.synthetic.main.fragment_result_swipe.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
-import java.lang.ref.WeakReference
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.Charset
-import kotlin.math.absoluteValue
 import kotlin.reflect.KClass
 import kotlin.system.exitProcess
 
@@ -319,6 +306,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
                                     this@with.runOnUiThread {
                                         try {
                                             showToast(
+                                                this@with,
                                                 getString(if (isSuccessful) R.string.authenticated_user else R.string.authenticated_user_fail).format(
                                                     api.name
                                                 )
@@ -346,10 +334,8 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
 
                         // Use both navigation views to support both layouts.
                         // It might be better to use the QuickSearch.
-                        activity?.findViewById<BottomNavigationView>(R.id.nav_view)?.selectedItemId =
-                            R.id.navigation_search
-                        activity?.findViewById<NavigationRailView>(R.id.nav_rail_view)?.selectedItemId =
-                            R.id.navigation_search
+                        nav_view?.selectedItemId = R.id.navigation_search
+                        nav_rail_view?.selectedItemId = R.id.navigation_search
                     } else if (safeURI(str)?.scheme == appStringPlayer) {
                         val uri = Uri.parse(str)
                         val name = uri.getQueryParameter("name")
@@ -382,12 +368,10 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
                             this.navigate(R.id.navigation_downloads)
                             return true
                         } else {
-                            synchronized(apis) {
-                                for (api in apis) {
-                                    if (str.startsWith(api.mainUrl)) {
-                                        loadResult(str, api.name)
-                                        return true
-                                    }
+                            for (api in apis) {
+                                if (str.startsWith(api.mainUrl)) {
+                                    loadResult(str, api.name)
+                                    return true
                                 }
                             }
                         }
@@ -428,7 +412,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
         this.hideKeyboard()
 
         // Fucks up anime info layout since that has its own layout
-        binding?.castMiniControllerHolder?.isVisible =
+        cast_mini_controller_holder?.isVisible =
             !listOf(
                 R.id.navigation_results_phone,
                 R.id.navigation_results_tv,
@@ -464,27 +448,15 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
             R.id.navigation_player,
         ).contains(destination.id)
 
-        binding?.navHostFragment?.apply {
+        nav_host_fragment?.apply {
             val params = layoutParams as ConstraintLayout.LayoutParams
-            val push =
-                if (!dontPush && isTvSettings()) resources.getDimensionPixelSize(R.dimen.navbar_width) else 0
 
-            if (!this.isLtr()) {
-                params.setMargins(
-                    params.leftMargin,
-                    params.topMargin,
-                    push,
-                    params.bottomMargin
-                )
-            } else {
-                params.setMargins(
-                    push,
-                    params.topMargin,
-                    params.rightMargin,
-                    params.bottomMargin
-                )
-            }
-
+            params.setMargins(
+                if (!dontPush && isTvSettings()) resources.getDimensionPixelSize(R.dimen.navbar_width) else 0,
+                params.topMargin,
+                params.rightMargin,
+                params.bottomMargin
+            )
             layoutParams = params
         }
 
@@ -492,24 +464,21 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
             Configuration.ORIENTATION_LANDSCAPE -> {
                 true
             }
-
             Configuration.ORIENTATION_PORTRAIT -> {
-                isTvSettings()
+                false
             }
-
             else -> {
                 false
             }
         }
-        binding?.apply {
-            navView.isVisible = isNavVisible && !landscape
-            navRailView.isVisible = isNavVisible && landscape
 
-            // Hide library on TV since it is not supported yet :(
-            val isTrueTv = isTrueTvSettings()
-            navView.menu.findItem(R.id.navigation_library)?.isVisible = !isTrueTv
-            navRailView.menu.findItem(R.id.navigation_library)?.isVisible = !isTrueTv
-        }
+        nav_view?.isVisible = isNavVisible && !landscape
+        nav_rail_view?.isVisible = isNavVisible && landscape
+
+        // Hide library on TV since it is not supported yet :(
+        val isTrueTv = isTrueTvSettings()
+        nav_view?.menu?.findItem(R.id.navigation_library)?.isVisible = !isTrueTv
+        nav_rail_view?.menu?.findItem(R.id.navigation_library)?.isVisible = !isTrueTv
     }
 
     //private var mCastSession: CastSession? = null
@@ -577,23 +546,11 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
         }
     }
 
+
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        val start = System.currentTimeMillis()
-        try {
-            val response = CommonActivity.dispatchKeyEvent(this, event)
-
-            if (response != null)
-                return response
-        } finally {
-            debugAssert({
-                val end = System.currentTimeMillis()
-                val delta = end - start
-                delta > 100
-            }) {
-                "Took over 100ms to navigate, smth is VERY wrong"
-            }
+        CommonActivity.dispatchKeyEvent(this, event)?.let {
+            return it
         }
-
         return super.dispatchKeyEvent(event)
     }
 
@@ -698,29 +655,27 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
     private fun onAllPluginsLoaded(success: Boolean = false) {
         ioSafe {
             pluginsLock.withLock {
-                synchronized(allProviders) {
-                    // Load cloned sites after plugins have been loaded since clones depend on plugins.
-                    try {
-                        getKey<Array<SettingsGeneral.CustomSite>>(USER_PROVIDER_API)?.let { list ->
-                            list.forEach { custom ->
-                                allProviders.firstOrNull { it.javaClass.simpleName == custom.parentJavaClass }
-                                    ?.let {
-                                        allProviders.add(it.javaClass.newInstance().apply {
-                                            name = custom.name
-                                            lang = custom.lang
-                                            mainUrl = custom.url.trimEnd('/')
-                                            canBeOverridden = false
-                                        })
-                                    }
-                            }
+                // Load cloned sites after plugins have been loaded since clones depend on plugins.
+                try {
+                    getKey<Array<SettingsGeneral.CustomSite>>(USER_PROVIDER_API)?.let { list ->
+                        list.forEach { custom ->
+                            allProviders.firstOrNull { it.javaClass.simpleName == custom.parentJavaClass }
+                                ?.let {
+                                    allProviders.add(it.javaClass.newInstance().apply {
+                                        name = custom.name
+                                        lang = custom.lang
+                                        mainUrl = custom.url.trimEnd('/')
+                                        canBeOverridden = false
+                                    })
+                                }
                         }
-                        // it.hashCode() is not enough to make sure they are distinct
-                        apis =
-                            allProviders.distinctBy { it.lang + it.name + it.mainUrl + it.javaClass.name }
-                        APIHolder.apiMap = null
-                    } catch (e: Exception) {
-                        logError(e)
                     }
+                    // it.hashCode() is not enough to make sure they are distinct
+                    apis =
+                        allProviders.distinctBy { it.lang + it.name + it.mainUrl + it.javaClass.name }
+                    APIHolder.apiMap = null
+                } catch (e: Exception) {
+                    logError(e)
                 }
             }
         }
@@ -736,216 +691,27 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
     }
 
     private fun hidePreviewPopupDialog() {
+        viewModel.clear()
         bottomPreviewPopup.dismissSafe(this)
-        bottomPreviewPopup = null
-        bottomPreviewBinding = null
     }
 
-    private var bottomPreviewPopup: BottomSheetDialog? = null
-    private var bottomPreviewBinding: BottomResultviewPreviewBinding? = null
-    private fun showPreviewPopupDialog(): BottomResultviewPreviewBinding {
-        val ret = (bottomPreviewBinding ?: run {
+    var bottomPreviewPopup: BottomSheetDialog? = null
+    private fun showPreviewPopupDialog(): BottomSheetDialog {
+        val ret = (bottomPreviewPopup ?: run {
             val builder =
                 BottomSheetDialog(this)
-            val binding: BottomResultviewPreviewBinding =
-                BottomResultviewPreviewBinding.inflate(builder.layoutInflater, null, false)
-            bottomPreviewBinding = binding
-            builder.setContentView(binding.root)
+            builder.setContentView(R.layout.bottom_resultview_preview)
             builder.setOnDismissListener {
                 bottomPreviewPopup = null
-                bottomPreviewBinding = null
                 viewModel.clear()
             }
             builder.setCanceledOnTouchOutside(true)
             builder.show()
-            bottomPreviewPopup = builder
-            binding
+            builder
         })
-
+        bottomPreviewPopup = ret
         return ret
     }
-
-    private var binding: ActivityMainBinding? = null
-
-    object TvFocus {
-        data class FocusTarget(
-            val width: Int,
-            val height: Int,
-            val x: Float,
-            val y: Float,
-        ) {
-            companion object {
-                fun lerp(a: FocusTarget, b: FocusTarget, lerp: Float): FocusTarget {
-                    val ilerp = 1 - lerp
-                    return FocusTarget(
-                        width = (a.width * ilerp + b.width * lerp).toInt(),
-                        height = (a.height * ilerp + b.height * lerp).toInt(),
-                        x = a.x * ilerp + b.x * lerp,
-                        y = a.y * ilerp + b.y * lerp
-                    )
-                }
-            }
-        }
-
-        var last: FocusTarget = FocusTarget(0, 0, 0.0f, 0.0f)
-        var current: FocusTarget = FocusTarget(0, 0, 0.0f, 0.0f)
-
-        var focusOutline: WeakReference<View> = WeakReference(null)
-        var lastFocus: WeakReference<View> = WeakReference(null)
-        private val layoutListener: View.OnLayoutChangeListener =
-            View.OnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-                updateFocusView(
-                    v, same = true
-                )
-            }
-        private val attachListener: View.OnAttachStateChangeListener =
-            object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(v: View) {
-                    updateFocusView(v)
-                }
-
-                override fun onViewDetachedFromWindow(v: View) {
-                    // removes the focus view but not the listener as updateFocusView(null) will remove the listener
-                    focusOutline.get()?.isVisible = false
-                }
-            }
-
-        private fun setTargetPosition(target: FocusTarget) {
-            focusOutline.get()?.apply {
-                layoutParams = layoutParams?.apply {
-                    width = target.width
-                    height = target.height
-                }
-
-                translationX = target.x
-                translationY = target.y
-                bringToFront()
-            }
-        }
-
-        private var animator: ValueAnimator? = null
-
-        @MainThread
-        fun updateFocusView(newFocus: View?, same: Boolean = false) {
-            val focusOutline = focusOutline.get() ?: return
-            lastFocus.get()?.apply {
-                removeOnLayoutChangeListener(layoutListener)
-                removeOnAttachStateChangeListener(attachListener)
-            }
-
-            val wasGone = focusOutline.isGone
-
-            val visible =
-                newFocus != null && newFocus.measuredHeight > 0 && newFocus.measuredWidth > 0 && newFocus.isShown && newFocus.tag != "tv_no_focus_tag"
-            focusOutline.isVisible = visible
-
-            if (newFocus != null) {
-                lastFocus = WeakReference(newFocus)
-
-                val out = IntArray(2)
-                newFocus.getLocationInWindow(out)
-                val (screenX, screenY) = out
-                var (x, y) = screenX.toFloat() to screenY.toFloat()
-                val (currentX, currentY) = focusOutline.translationX to focusOutline.translationY
-                //            println(">><<< $x $y $currentX $currentY")
-                if (!newFocus.isLtr()) {
-                    x = x - focusOutline.rootView.width + newFocus.measuredWidth
-                }
-
-                // out of bounds = 0,0
-                if (screenX == 0 && screenY == 0) {
-                    focusOutline.isVisible = false
-                }
-
-                newFocus.addOnLayoutChangeListener(layoutListener)
-                newFocus.addOnAttachStateChangeListener(attachListener)
-
-                val start = FocusTarget(
-                    x = currentX,
-                    y = currentY,
-                    width = focusOutline.measuredWidth,
-                    height = focusOutline.measuredHeight
-                )
-                val end = FocusTarget(
-                    x = x,
-                    y = y,
-                    width = newFocus.measuredWidth,
-                    height = newFocus.measuredHeight
-                )
-
-                // if they are the same within then snap, aka scrolling
-                val deltaMin = 50.toPx
-                if (start.width == end.width && start.height == end.height && (start.x - end.x).absoluteValue < deltaMin && (start.y - end.y).absoluteValue < deltaMin) {
-                    animator?.cancel()
-                    last = start
-                    current = end
-                    setTargetPosition(end)
-                    return
-                }
-
-                // if running then "reuse"
-                if (animator?.isRunning == true) {
-                    current = end
-                    return
-                } else {
-                    animator?.cancel()
-                }
-
-
-                last = start
-                current = end
-
-                // if previously gone, then tp
-                if (wasGone) {
-                    setTargetPosition(current)
-                    return
-                }
-
-                // animate between a and b
-                animator = ValueAnimator.ofFloat(0.0f, 1.0f).apply {
-                    startDelay = 0
-                    duration = 100
-                    addUpdateListener { animation ->
-                        val animatedValue = animation.animatedValue as Float
-                        val target = FocusTarget.lerp(last, current, minOf(animatedValue, 1.0f))
-                        setTargetPosition(target)
-                    }
-                    start()
-                }
-
-                // post check
-                if (!same) {
-                    newFocus.postDelayed({
-                        updateFocusView(lastFocus.get(), same = true)
-                    }, 200)
-                }
-
-                /*
-
-                the following is working, but somewhat bad code code
-
-                if (!wasGone) {
-                    (focusOutline.parent as? ViewGroup)?.let {
-                        TransitionManager.endTransitions(it)
-                        TransitionManager.beginDelayedTransition(
-                            it,
-                            TransitionSet().addTransition(ChangeBounds())
-                                .addTransition(ChangeTransform())
-                                .setDuration(100)
-                        )
-                    }
-                }
-
-                focusOutline.layoutParams = focusOutline.layoutParams?.apply {
-                    width = newFocus.measuredWidth
-                    height = newFocus.measuredHeight
-                }
-                focusOutline.translationX = x.toFloat()
-                focusOutline.translationY = y.toFloat()*/
-            }
-        }
-    }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         app.initClient(this)
@@ -971,48 +737,16 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
             if (isCastApiAvailable()) {
                 mSessionManager = CastContext.getSharedInstance(this).sessionManager
             }
-        } catch (t: Throwable) {
-            logError(t)
+        } catch (e: Exception) {
+            logError(e)
         }
 
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         updateTv()
-
-        // backup when we update the app, I don't trust myself to not boot lock users, might want to make this a setting?
-        try {
-            val appVer = BuildConfig.VERSION_NAME
-            val lastAppAutoBackup: String = getKey("VERSION_NAME") ?: ""
-            if (appVer != lastAppAutoBackup) {
-                setKey("VERSION_NAME", BuildConfig.VERSION_NAME)
-                backup()
-            }
-        } catch (t: Throwable) {
-            logError(t)
-        }
-
-        // just in case, MAIN SHOULD *NEVER* BOOT LOOP CRASH
-        binding = try {
-            if (isTvSettings()) {
-                val newLocalBinding = ActivityMainTvBinding.inflate(layoutInflater, null, false)
-                setContentView(newLocalBinding.root)
-                TvFocus.focusOutline = WeakReference(newLocalBinding.focusOutline)
-                newLocalBinding.root.viewTreeObserver.addOnGlobalFocusChangeListener { _, newFocus ->
-                    // println("refocus $oldFocus -> $newFocus")
-                    TvFocus.updateFocusView(newFocus)
-                }
-                newLocalBinding.root.viewTreeObserver.addOnScrollChangedListener {
-                    TvFocus.updateFocusView(TvFocus.lastFocus.get(), same = true)
-                }
-
-                ActivityMainBinding.bind(newLocalBinding.root) // this may crash
-            } else {
-                val newLocalBinding = ActivityMainBinding.inflate(layoutInflater, null, false)
-                setContentView(newLocalBinding.root)
-                newLocalBinding
-            }
-        } catch (t: Throwable) {
-            showToast(txt(R.string.unable_to_inflate, t.message ?: ""), Toast.LENGTH_LONG)
-            null
+        if (isTvSettings()) {
+            setContentView(R.layout.activity_main_tv)
+        } else {
+            setContentView(R.layout.activity_main)
         }
 
         changeStatusBarState(isEmulatorSettings())
@@ -1043,7 +777,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
 
         if (PluginManager.checkSafeModeFile()) {
             normalSafeApiCall {
-                showToast(R.string.safe_mode_file, Toast.LENGTH_LONG)
+                showToast(this, R.string.safe_mode_file, Toast.LENGTH_LONG)
             }
         } else if (lastError == null) {
             ioSafe {
@@ -1097,44 +831,41 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
 
         observeNullable(viewModel.page) { resource ->
             if (resource == null) {
-                hidePreviewPopupDialog()
+                bottomPreviewPopup.dismissSafe(this)
                 return@observeNullable
             }
             when (resource) {
                 is Resource.Failure -> {
-                    showToast(R.string.error)
-                    viewModel.clear()
+                    showToast(this, R.string.error)
                     hidePreviewPopupDialog()
                 }
-
                 is Resource.Loading -> {
                     showPreviewPopupDialog().apply {
-                        resultviewPreviewLoading.isVisible = true
-                        resultviewPreviewResult.isVisible = false
-                        resultviewPreviewLoadingShimmer.startShimmer()
+                        resultview_preview_loading?.isVisible = true
+                        resultview_preview_result?.isVisible = false
+                        resultview_preview_loading_shimmer?.startShimmer()
                     }
                 }
-
                 is Resource.Success -> {
                     val d = resource.value
                     showPreviewPopupDialog().apply {
-                        resultviewPreviewLoading.isVisible = false
-                        resultviewPreviewResult.isVisible = true
-                        resultviewPreviewLoadingShimmer.stopShimmer()
+                        resultview_preview_loading?.isVisible = false
+                        resultview_preview_result?.isVisible = true
+                        resultview_preview_loading_shimmer?.stopShimmer()
 
-                        resultviewPreviewTitle.text = d.title
+                        resultview_preview_title?.text = d.title
 
-                        resultviewPreviewMetaType.setText(d.typeText)
-                        resultviewPreviewMetaYear.setText(d.yearText)
-                        resultviewPreviewMetaDuration.setText(d.durationText)
-                        resultviewPreviewMetaRating.setText(d.ratingText)
+                        resultview_preview_meta_type.setText(d.typeText)
+                        resultview_preview_meta_year.setText(d.yearText)
+                        resultview_preview_meta_duration.setText(d.durationText)
+                        resultview_preview_meta_rating.setText(d.ratingText)
 
-                        resultviewPreviewDescription.setText(d.plotText)
-                        resultviewPreviewPoster.setImage(
+                        resultview_preview_description?.setText(d.plotText)
+                        resultview_preview_poster?.setImage(
                             d.posterImage ?: d.posterBackgroundImage
                         )
 
-                        resultviewPreviewPoster.setOnClickListener {
+                        resultview_preview_poster?.setOnClickListener {
                             //viewModel.updateWatchStatus(WatchType.PLANTOWATCH)
                             val value = viewModel.watchStatus.value ?: WatchType.NONE
 
@@ -1145,11 +876,12 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
                                 showApply = false,
                                 {}) {
                                 viewModel.updateWatchStatus(WatchType.values()[it])
+                                bookmarksUpdatedEvent(true)
                             }
                         }
 
                         if (!isTvSettings()) // dont want this clickable on tv layout
-                            resultviewPreviewDescription.setOnClickListener { view ->
+                            resultview_preview_description?.setOnClickListener { view ->
                                 view.context?.let { ctx ->
                                     val builder: AlertDialog.Builder =
                                         AlertDialog.Builder(ctx, R.style.AlertDialogCustom)
@@ -1159,8 +891,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
                                 }
                             }
 
-                        resultviewPreviewMoreInfo.setOnClickListener {
-                            viewModel.clear()
+                        resultview_preview_more_info?.setOnClickListener {
                             hidePreviewPopupDialog()
                             lastPopup?.let {
                                 loadSearchResult(it)
@@ -1201,9 +932,7 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
         ioSafe {
             initAll()
             // No duplicates (which can happen by registerMainAPI)
-            apis = synchronized(allProviders) {
-                allProviders.distinctBy { it }
-            }
+            apis = allProviders.distinctBy { it }
         }
 
         //  val navView: BottomNavigationView = findViewById(R.id.nav_view)
@@ -1234,22 +963,22 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
             .setPopExitAnim(R.anim.nav_pop_exit)
             .setPopUpTo(navController.graph.startDestination, false)
             .build()*/
-        binding?.navView?.setupWithNavController(navController)
-        val navRail = findViewById<NavigationRailView?>(R.id.nav_rail_view)
-        navRail?.setupWithNavController(navController)
+        nav_view?.setupWithNavController(navController)
+        val nav_rail = findViewById<NavigationRailView?>(R.id.nav_rail_view)
+        nav_rail?.setupWithNavController(navController)
         if (isTvSettings()) {
-            navRail?.background?.alpha = 200
+            nav_rail?.background?.alpha = 200
         } else {
-            navRail?.background?.alpha = 255
+            nav_rail?.background?.alpha = 255
 
         }
-        navRail?.setOnItemSelectedListener { item ->
+        nav_rail?.setOnItemSelectedListener { item ->
             onNavDestinationSelected(
                 item,
                 navController
             )
         }
-        binding?.navView?.setOnItemSelectedListener { item ->
+        nav_view?.setOnItemSelectedListener { item ->
             onNavDestinationSelected(
                 item,
                 navController
@@ -1280,16 +1009,16 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
         }*/
 
         val rippleColor = ColorStateList.valueOf(getResourceColor(R.attr.colorPrimary, 0.1f))
-        binding?.navView?.itemRippleColor = rippleColor
-        navRail?.itemRippleColor = rippleColor
-        navRail?.itemActiveIndicatorColor = rippleColor
-        binding?.navView?.itemActiveIndicatorColor = rippleColor
+        nav_view?.itemRippleColor = rippleColor
+        nav_rail?.itemRippleColor = rippleColor
+        nav_rail?.itemActiveIndicatorColor = rippleColor
+        nav_view?.itemActiveIndicatorColor = rippleColor
 
         if (!checkWrite()) {
             requestRW()
             if (checkWrite()) return
         }
-        //CastButtonFactory.setUpMediaRouteButton(this, media_route_button)
+        CastButtonFactory.setUpMediaRouteButton(this, media_route_button)
 
         // THIS IS CURRENTLY REMOVED BECAUSE HIGHER VERS OF ANDROID NEEDS A NOTIFICATION
         //if (!VideoDownloadManager.isMyServiceRunning(this, VideoDownloadKeepAliveService::class.java)) {
@@ -1356,15 +1085,14 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener {
 
         if (BuildConfig.DEBUG) {
             var providersAndroidManifestString = "Current androidmanifest should be:\n"
-            synchronized(allProviders) {
-                for (api in allProviders) {
-                    providersAndroidManifestString += "<data android:scheme=\"https\" android:host=\"${
-                        api.mainUrl.removePrefix(
-                            "https://"
-                        )
-                    }\" android:pathPrefix=\"/\"/>\n"
-                }
+            for (api in allProviders) {
+                providersAndroidManifestString += "<data android:scheme=\"https\" android:host=\"${
+                    api.mainUrl.removePrefix(
+                        "https://"
+                    )
+                }\" android:pathPrefix=\"/\"/>\n"
             }
+
             println(providersAndroidManifestString)
         }
 

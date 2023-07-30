@@ -86,6 +86,7 @@ class PluginsViewModel : ViewModel() {
                 }.also { list ->
                     main {
                         showToast(
+                            activity,
                             if (list.isEmpty()) {
                                 txt(
                                     R.string.batch_download_nothing_to_download_format,
@@ -112,6 +113,7 @@ class PluginsViewModel : ViewModel() {
                 }.main { list ->
                     if (list.any { it }) {
                         showToast(
+                            activity,
                             txt(
                                 R.string.batch_download_finish_format,
                                 list.count { it },
@@ -121,7 +123,7 @@ class PluginsViewModel : ViewModel() {
                         )
                         viewModel?.updatePluginListPrivate(activity, repositoryUrl)
                     } else if (list.isNotEmpty()) {
-                        showToast(R.string.download_failed, Toast.LENGTH_SHORT)
+                        showToast(activity, R.string.download_failed, Toast.LENGTH_SHORT)
                     }
                 }
             }
@@ -164,9 +166,9 @@ class PluginsViewModel : ViewModel() {
 
         runOnMainThread {
             if (success)
-                showToast(message, Toast.LENGTH_SHORT)
+                showToast(activity, message, Toast.LENGTH_SHORT)
             else
-                showToast(R.string.error, Toast.LENGTH_SHORT)
+                showToast(activity, R.string.error, Toast.LENGTH_SHORT)
         }
 
         if (success)

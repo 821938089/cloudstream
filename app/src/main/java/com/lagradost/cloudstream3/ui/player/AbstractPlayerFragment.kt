@@ -12,9 +12,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.LayoutRes
 import androidx.annotation.StringRes
@@ -27,7 +24,6 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
-import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.SubtitleView
 import com.lagradost.cloudstream3.AcraApplication.Companion.getKey
 import com.lagradost.cloudstream3.AcraApplication.Companion.setKey
@@ -46,6 +42,8 @@ import com.lagradost.cloudstream3.utils.EpisodeSkip
 import com.lagradost.cloudstream3.utils.UIHelper
 import com.lagradost.cloudstream3.utils.UIHelper.hideSystemUI
 import com.lagradost.cloudstream3.utils.UIHelper.popCurrentPage
+import kotlinx.android.synthetic.main.fragment_player.*
+import kotlinx.android.synthetic.main.player_custom_layout.*
 
 enum class PlayerResize(@StringRes val nameRes: Int) {
     Fit(R.string.resize_fit),
@@ -74,15 +72,9 @@ abstract class AbstractPlayerFragment(
     var isBuffering = true
     protected open var hasPipModeSupport = true
 
-    var playerPausePlayHolderHolder : FrameLayout? = null
-    var playerPausePlay : ImageView? = null
-    var playerBuffering : ProgressBar? = null
-    var playerView : PlayerView? = null
-    var piphide : FrameLayout? = null
-    var subtitleHolder : FrameLayout? = null
 
     @LayoutRes
-    protected open var layout: Int = R.layout.fragment_player
+    protected var layout: Int = R.layout.fragment_player
 
     open fun nextEpisode() {
         throw NotImplementedError()
@@ -141,15 +133,15 @@ abstract class AbstractPlayerFragment(
 
         isBuffering = CSPlayerLoading.IsBuffering == isPlaying
         if (isBuffering) {
-            playerPausePlayHolderHolder?.isVisible = false
-            playerBuffering?.isVisible = true
+            player_pause_play_holder_holder?.isVisible = false
+            player_buffering?.isVisible = true
         } else {
-            playerPausePlayHolderHolder?.isVisible = true
-            playerBuffering?.isVisible = false
+            player_pause_play_holder_holder?.isVisible = true
+            player_buffering?.isVisible = false
 
             if (wasPlaying != isPlaying) {
-                playerPausePlay?.setImageResource(if (isPlayingRightNow) R.drawable.play_to_pause else R.drawable.pause_to_play)
-                val drawable = playerPausePlay?.drawable
+                player_pause_play?.setImageResource(if (isPlayingRightNow) R.drawable.play_to_pause else R.drawable.pause_to_play)
+                val drawable = player_pause_play?.drawable
 
                 var startedAnimation = false
                 if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
@@ -171,10 +163,10 @@ abstract class AbstractPlayerFragment(
 
                 // somehow the phone is wacked
                 if (!startedAnimation) {
-                    playerPausePlay?.setImageResource(if (isPlayingRightNow) R.drawable.netflix_pause else R.drawable.netflix_play)
+                    player_pause_play?.setImageResource(if (isPlayingRightNow) R.drawable.netflix_pause else R.drawable.netflix_play)
                 }
             } else {
-                playerPausePlay?.setImageResource(if (isPlayingRightNow) R.drawable.netflix_pause else R.drawable.netflix_play)
+                player_pause_play?.setImageResource(if (isPlayingRightNow) R.drawable.netflix_pause else R.drawable.netflix_play)
             }
         }
 
@@ -251,12 +243,14 @@ abstract class AbstractPlayerFragment(
         fun showToast(message: String, gotoNext: Boolean = false) {
             if (gotoNext && hasNextMirror()) {
                 showToast(
+                    activity,
                     message,
                     Toast.LENGTH_SHORT
                 )
                 nextMirror()
             } else {
                 showToast(
+                    activity,
                     context?.getString(R.string.no_links_found_toast) + "\n" + message,
                     Toast.LENGTH_LONG
                 )
@@ -334,9 +328,9 @@ abstract class AbstractPlayerFragment(
             }
 
             // Necessary for multiple combined videos
-            playerView?.setShowMultiWindowTimeBar(true)
-            playerView?.player = player
-            playerView?.performClick()
+            player_view?.setShowMultiWindowTimeBar(true)
+            player_view?.player = player
+            player_view?.performClick()
         }
     }
 
@@ -394,9 +388,9 @@ abstract class AbstractPlayerFragment(
         )
 
         if (player is CS3IPlayer) {
-            subView = playerView?.findViewById(R.id.exo_subtitles)
+            subView = player_view?.findViewById(R.id.exo_subtitles)
             subStyle = SubtitlesFragment.getCurrentSavedStyle()
-            player.initSubtitles(subView, subtitleHolder, subStyle)
+            player.initSubtitles(subView, subtitle_holder, subStyle)
 
             SubtitlesFragment.applyStyleEvent += ::onSubStyleChanged
 
@@ -464,10 +458,10 @@ abstract class AbstractPlayerFragment(
             PlayerResize.Fit -> AspectRatioFrameLayout.RESIZE_MODE_FIT
             PlayerResize.Zoom -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         }
-        playerView?.resizeMode = type
+        player_view?.resizeMode = type
 
         if (showToast)
-            showToast(resize.nameRes, Toast.LENGTH_SHORT)
+            showToast(activity, resize.nameRes, Toast.LENGTH_SHORT)
     }
 
     override fun onStop() {
@@ -488,13 +482,6 @@ abstract class AbstractPlayerFragment(
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val root = inflater.inflate(layout, container, false)
-        playerPausePlayHolderHolder = root.findViewById(R.id.player_pause_play_holder_holder)
-        playerPausePlay = root.findViewById(R.id.player_pause_play)
-        playerBuffering = root.findViewById(R.id.player_buffering)
-        playerView = root.findViewById(R.id.player_view)
-        piphide = root.findViewById(R.id.piphide)
-        subtitleHolder = root.findViewById(R.id.subtitle_holder)
-        return root
+        return inflater.inflate(layout, container, false)
     }
 }

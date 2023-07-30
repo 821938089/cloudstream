@@ -34,10 +34,10 @@ import com.lagradost.cloudstream3.utils.UIHelper.hideKeyboard
 import com.lagradost.cloudstream3.utils.UIHelper.navigate
 import com.lagradost.cloudstream3.utils.VideoDownloadHelper
 import com.lagradost.cloudstream3.utils.VideoDownloadManager
+import kotlinx.android.synthetic.main.fragment_downloads.*
+import kotlinx.android.synthetic.main.stream_input.*
 import android.text.format.Formatter.formatShortFileSize
 import androidx.core.widget.doOnTextChanged
-import com.lagradost.cloudstream3.databinding.FragmentDownloadsBinding
-import com.lagradost.cloudstream3.databinding.StreamInputBinding
 import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
 import com.lagradost.cloudstream3.ui.player.BasicLink
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isTrueTvSettings
@@ -60,8 +60,8 @@ class DownloadFragment : Fragment() {
 
     private fun setList(list: List<VisualDownloadHeaderCached>) {
         main {
-            (binding?.downloadList?.adapter as DownloadHeaderAdapter?)?.cardList = list
-            binding?.downloadList?.adapter?.notifyDataSetChanged()
+            (download_list?.adapter as DownloadHeaderAdapter?)?.cardList = list
+            download_list?.adapter?.notifyDataSetChanged()
         }
     }
 
@@ -70,11 +70,9 @@ class DownloadFragment : Fragment() {
             VideoDownloadManager.downloadDeleteEvent -= downloadDeleteEventListener!!
             downloadDeleteEventListener = null
         }
-        binding = null
+        (download_list?.adapter as DownloadHeaderAdapter?)?.killAdapter()
         super.onDestroyView()
     }
-
-    var binding : FragmentDownloadsBinding? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -84,9 +82,7 @@ class DownloadFragment : Fragment() {
         downloadsViewModel =
             ViewModelProvider(this)[DownloadViewModel::class.java]
 
-        val localBinding = FragmentDownloadsBinding.inflate(inflater, container, false)
-        binding = localBinding
-        return localBinding.root//inflater.inflate(R.layout.fragment_downloads, container, false)
+        return inflater.inflate(R.layout.fragment_downloads, container, false)
     }
 
     private var downloadDeleteEventListener: ((Int) -> Unit)? = null
@@ -96,40 +92,36 @@ class DownloadFragment : Fragment() {
         hideKeyboard()
 
         observe(downloadsViewModel.noDownloadsText) {
-            binding?.textNoDownloads?.text = it
+            text_no_downloads.text = it
         }
         observe(downloadsViewModel.headerCards) {
             setList(it)
-            binding?.downloadLoading?.isVisible = false
+            download_loading.isVisible = false
         }
         observe(downloadsViewModel.availableBytes) {
-            binding?.downloadFreeTxt?.text =
+            download_free_txt?.text =
                 getString(R.string.storage_size_format).format(
                     getString(R.string.free_storage),
                     formatShortFileSize(view.context, it)
                 )
-            binding?.downloadFree?.setLayoutWidth(it)
+            download_free?.setLayoutWidth(it)
         }
         observe(downloadsViewModel.usedBytes) {
-            binding?.apply {
-                downloadUsedTxt.text =
-                    getString(R.string.storage_size_format).format(
-                        getString(R.string.used_storage),
-                        formatShortFileSize(view.context, it)
-                    )
-                downloadUsed.setLayoutWidth(it)
-                downloadStorageAppbar.isVisible = it > 0
-            }
+            download_used_txt?.text =
+                getString(R.string.storage_size_format).format(
+                    getString(R.string.used_storage),
+                    formatShortFileSize(view.context, it)
+                )
+            download_used?.setLayoutWidth(it)
+            download_storage_appbar?.isVisible = it > 0
         }
         observe(downloadsViewModel.downloadBytes) {
-            binding?.apply {
-                downloadAppTxt.text =
-                    getString(R.string.storage_size_format).format(
-                        getString(R.string.app_storage),
-                        formatShortFileSize(view.context, it)
-                    )
-                downloadApp.setLayoutWidth(it)
-            }
+            download_app_txt?.text =
+                getString(R.string.storage_size_format).format(
+                    getString(R.string.app_storage),
+                    formatShortFileSize(view.context, it)
+                )
+            download_app?.setLayoutWidth(it)
         }
 
         val adapter: RecyclerView.Adapter<RecyclerView.ViewHolder> =
@@ -162,7 +154,7 @@ class DownloadFragment : Fragment() {
                 },
                 { downloadClickEvent ->
                     if (downloadClickEvent.data !is VideoDownloadHelper.DownloadEpisodeCached) return@DownloadHeaderAdapter
-                    handleDownloadClick(downloadClickEvent)
+                    handleDownloadClick(activity, downloadClickEvent)
                     if (downloadClickEvent.action == DOWNLOAD_ACTION_DELETE_FILE) {
                         context?.let { ctx ->
                             downloadsViewModel.updateList(ctx)
@@ -172,7 +164,7 @@ class DownloadFragment : Fragment() {
             )
 
         downloadDeleteEventListener = { id ->
-            val list = (binding?.downloadList?.adapter as DownloadHeaderAdapter?)?.cardList
+            val list = (download_list?.adapter as DownloadHeaderAdapter?)?.cardList
             if (list != null) {
                 if (list.any { it.data.id == id }) {
                     context?.let { ctx ->
@@ -185,36 +177,31 @@ class DownloadFragment : Fragment() {
 
         downloadDeleteEventListener?.let { VideoDownloadManager.downloadDeleteEvent += it }
 
-        binding?.downloadList?.apply {
-            this.adapter = adapter
-            layoutManager = GridLayoutManager(context, 1)
-        }
+        download_list?.adapter = adapter
+        download_list?.layoutManager = GridLayoutManager(context, 1)
 
         // Should be visible in emulator layout
-        binding?.downloadStreamButton?.isGone = isTrueTvSettings()
-        binding?.downloadStreamButton?.setOnClickListener {
+        download_stream_button?.isGone = isTrueTvSettings()
+        download_stream_button?.setOnClickListener {
             val dialog =
                 Dialog(it.context ?: return@setOnClickListener, R.style.AlertDialogCustom)
-
-            val binding = StreamInputBinding.inflate(dialog.layoutInflater)
-
-            dialog.setContentView(binding.root)
+            dialog.setContentView(R.layout.stream_input)
 
             dialog.show()
 
             // If user has clicked the switch do not interfere
             var preventAutoSwitching = false
-            binding.hlsSwitch.setOnClickListener {
+            dialog.hls_switch?.setOnClickListener {
                 preventAutoSwitching = true
             }
 
             fun activateSwitchOnHls(text: String?) {
-                binding.hlsSwitch.isChecked = normalSafeApiCall {
+                dialog.hls_switch?.isChecked = normalSafeApiCall {
                     URI(text).path?.substringAfterLast(".")?.contains("m3u")
                 } == true
             }
 
-            binding.streamReferer.doOnTextChanged { text, _, _, _ ->
+            dialog.stream_referer?.doOnTextChanged { text, _, _, _ ->
                 if (!preventAutoSwitching)
                     activateSwitchOnHls(text?.toString())
             }
@@ -223,16 +210,16 @@ class DownloadFragment : Fragment() {
                 0
             )?.text?.toString()?.let { copy ->
                 val fixedText = copy.trim()
-                binding.streamUrl.setText(fixedText)
+                dialog.stream_url?.setText(fixedText)
                 activateSwitchOnHls(fixedText)
             }
 
-            binding.applyBtt.setOnClickListener {
-                val url = binding.streamUrl.text?.toString()
+            dialog.apply_btt?.setOnClickListener {
+                val url = dialog.stream_url.text?.toString()
                 if (url.isNullOrEmpty()) {
-                    showToast(R.string.error_invalid_url, Toast.LENGTH_SHORT)
+                    showToast(activity, R.string.error_invalid_url, Toast.LENGTH_SHORT)
                 } else {
-                    val referer = binding.streamReferer.text?.toString()
+                    val referer = dialog.stream_referer.text?.toString()
 
                     activity?.navigate(
                         R.id.global_to_navigation_player,
@@ -241,7 +228,7 @@ class DownloadFragment : Fragment() {
                                 listOf(BasicLink(url)),
                                 extract = true,
                                 referer = referer,
-                                isM3u8 = binding.hlsSwitch.isChecked
+                                isM3u8 = dialog.hls_switch?.isChecked
                             )
                         )
                     )
@@ -250,22 +237,22 @@ class DownloadFragment : Fragment() {
                 }
             }
 
-            binding.cancelBtt.setOnClickListener {
+            dialog.cancel_btt?.setOnClickListener {
                 dialog.dismissSafe(activity)
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            binding?.downloadList?.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
+            download_list?.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
                 val dy = scrollY - oldScrollY
                 if (dy > 0) { //check for scroll down
-                    binding?.downloadStreamButton?.shrink() // hide
+                    download_stream_button?.shrink() // hide
                 } else if (dy < -5) {
-                    binding?.downloadStreamButton?.extend() // show
+                    download_stream_button?.extend() // show
                 }
             }
         }
         downloadsViewModel.updateList(requireContext())
 
-        fixPaddingStatusbar(binding?.downloadRoot)
+        context?.fixPaddingStatusbar(download_root)
     }
 }

@@ -52,15 +52,7 @@ import javax.net.ssl.SSLSession
 const val TAG = "CS3ExoPlayer"
 const val PREFERRED_AUDIO_LANGUAGE_KEY = "preferred_audio_language"
 
-/** toleranceBeforeUs – The maximum time that the actual position seeked to may precede the
- * requested seek position, in microseconds. Must be non-negative. */
-const val toleranceBeforeUs = 300_000L
-
-/**
- * toleranceAfterUs – The maximum time that the actual position seeked to may exceed the requested
- * seek position, in microseconds. Must be non-negative.
- */
-const val toleranceAfterUs = 300_000L
+/** Cache */
 
 class CS3IPlayer : IPlayer {
     private var isPlaying = false
@@ -395,7 +387,6 @@ class CS3IPlayer : IPlayer {
                         Log.i(TAG, "setPreferredSubtitles REQUIRES_RELOAD")
                         return@let true
                     }
-
                     SubtitleStatus.IS_ACTIVE -> {
                         Log.i(TAG, "setPreferredSubtitles IS_ACTIVE")
 
@@ -421,7 +412,6 @@ class CS3IPlayer : IPlayer {
                         //    }, 1)
                         //}
                     }
-
                     SubtitleStatus.NOT_FOUND -> {
                         Log.i(TAG, "setPreferredSubtitles NOT_FOUND")
                         return@let true
@@ -688,22 +678,22 @@ class CS3IPlayer : IPlayer {
                             // Enable Ffmpeg extension
 //                            setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
                         }.createRenderers(
-                            eventHandler,
-                            videoRendererEventListener,
-                            audioRendererEventListener,
-                            textRendererOutput,
-                            metadataRendererOutput
-                        ).map {
-                            if (it is TextRenderer) {
-                                currentTextRenderer = CustomTextRenderer(
-                                    subtitleOffset,
-                                    textRendererOutput,
-                                    eventHandler.looper,
-                                    CustomSubtitleDecoderFactory()
-                                )
-                                currentTextRenderer!!
-                            } else it
-                        }.toTypedArray()
+                                eventHandler,
+                                videoRendererEventListener,
+                                audioRendererEventListener,
+                                textRendererOutput,
+                                metadataRendererOutput
+                            ).map {
+                                if (it is TextRenderer) {
+                                    currentTextRenderer = CustomTextRenderer(
+                                        subtitleOffset,
+                                        textRendererOutput,
+                                        eventHandler.looper,
+                                        CustomSubtitleDecoderFactory()
+                                    )
+                                    currentTextRenderer!!
+                                } else it
+                            }.toTypedArray()
                     }
                     .setTrackSelector(
                         trackSelector ?: getTrackSelector(
@@ -712,7 +702,7 @@ class CS3IPlayer : IPlayer {
                         )
                     )
                     // Allows any seeking to be +- 0.3s to allow for faster seeking
-                    .setSeekParameters(SeekParameters(toleranceBeforeUs, toleranceAfterUs))
+                    .setSeekParameters(SeekParameters(300_000, 300_000))
                     .setLoadControl(
                         DefaultLoadControl.Builder()
                             .setTargetBufferBytes(
@@ -779,7 +769,7 @@ class CS3IPlayer : IPlayer {
     private fun getCurrentTimestamp(writePosition: Long? = null): EpisodeSkip.SkipStamp? {
         val position = writePosition ?: this@CS3IPlayer.getPosition() ?: return null
         for (lastTimeStamp in lastTimeStamps) {
-            if (lastTimeStamp.startMs <= position && (position + (toleranceBeforeUs / 1000L) + 1) < lastTimeStamp.endMs) {
+            if (lastTimeStamp.startMs <= position && position < lastTimeStamp.endMs) {
                 return lastTimeStamp
             }
         }
@@ -787,12 +777,11 @@ class CS3IPlayer : IPlayer {
     }
 
     fun updatedTime(writePosition: Long? = null) {
-        val position = writePosition ?: exoPlayer?.currentPosition
-
-        getCurrentTimestamp(position)?.let { timestamp ->
+        getCurrentTimestamp(writePosition)?.let { timestamp ->
             onTimestampInvoked?.invoke(timestamp)
         }
 
+        val position = writePosition ?: exoPlayer?.currentPosition
         val duration = exoPlayer?.contentDuration
         if (duration != null && position != null) {
             playerPositionChanged?.invoke(Pair(position, duration))
@@ -821,11 +810,9 @@ class CS3IPlayer : IPlayer {
                     CSPlayerEvent.Play -> {
                         play()
                     }
-
                     CSPlayerEvent.Pause -> {
                         pause()
                     }
-
                     CSPlayerEvent.ToggleMute -> {
                         if (volume <= 0) {
                             //is muted
@@ -836,7 +823,6 @@ class CS3IPlayer : IPlayer {
                             volume = 0f
                         }
                     }
-
                     CSPlayerEvent.PlayPauseToggle -> {
                         if (isPlaying) {
                             pause()
@@ -844,7 +830,6 @@ class CS3IPlayer : IPlayer {
                             play()
                         }
                     }
-
                     CSPlayerEvent.SeekForward -> seekTime(seekActionTime)
                     CSPlayerEvent.SeekBack -> seekTime(-seekActionTime)
                     CSPlayerEvent.NextEpisode -> nextEpisode?.invoke()
@@ -969,7 +954,6 @@ class CS3IPlayer : IPlayer {
                         Player.STATE_READY -> {
                             onRenderFirst()
                         }
-
                         else -> {}
                     }
 
@@ -979,7 +963,6 @@ class CS3IPlayer : IPlayer {
                             Player.STATE_READY -> {
 
                             }
-
                             Player.STATE_ENDED -> {
                                 // Only play next episode if autoplay is on (default)
                                 if (PreferenceManager.getDefaultSharedPreferences(context)
@@ -991,15 +974,12 @@ class CS3IPlayer : IPlayer {
                                     handleEvent(CSPlayerEvent.NextEpisode)
                                 }
                             }
-
                             Player.STATE_BUFFERING -> {
                                 updatedTime()
                             }
-
                             Player.STATE_IDLE -> {
                                 // IDLE
                             }
-
                             else -> Unit
                         }
                     }
@@ -1014,13 +994,11 @@ class CS3IPlayer : IPlayer {
                                 && exoPlayer?.duration != TIME_UNSET -> {
                             exoPlayer?.prepare()
                         }
-
                         error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW -> {
                             // Re-initialize player at the current live window default position.
                             exoPlayer?.seekToDefaultPosition()
                             exoPlayer?.prepare()
                         }
-
                         else -> {
                             playerError?.invoke(error)
                         }
@@ -1047,7 +1025,6 @@ class CS3IPlayer : IPlayer {
                         Player.STATE_READY -> {
 
                         }
-
                         Player.STATE_ENDED -> {
                             // Only play next episode if autoplay is on (default)
                             if (PreferenceManager.getDefaultSharedPreferences(context)
@@ -1059,15 +1036,12 @@ class CS3IPlayer : IPlayer {
                                 handleEvent(CSPlayerEvent.NextEpisode)
                             }
                         }
-
                         Player.STATE_BUFFERING -> {
                             updatedTime()
                         }
-
                         Player.STATE_IDLE -> {
                             // IDLE
                         }
-
                         else -> Unit
                     }
                 }
@@ -1078,9 +1052,9 @@ class CS3IPlayer : IPlayer {
                 }
 
                 override fun onRenderedFirstFrame() {
+                    updatedTime()
                     super.onRenderedFirstFrame()
                     onRenderFirst()
-                    updatedTime()
                 }
             })
         } catch (e: Exception) {
@@ -1108,43 +1082,42 @@ class CS3IPlayer : IPlayer {
     }
 
     fun onRenderFirst() {
-        if (hasUsedFirstRender) { // this insures that we only call this once per player load
-            return
-        }
-        Log.i(TAG, "Rendered first frame")
-        hasUsedFirstRender = true
-        val invalid = exoPlayer?.duration?.let { duration ->
-            // Only errors short playback when not playing downloaded files
-            duration < 20_000L && currentDownloadedFile == null
-                    // Concatenated sources (non 1 periodCount) bypasses the invalid check as exoPlayer.duration gives only the current period
-                    // If you can get the total time that'd be better, but this is already niche.
-                    && exoPlayer?.currentTimeline?.periodCount == 1
-                    && exoPlayer?.isCurrentMediaItemLive != true
-        } ?: false
+        if (!hasUsedFirstRender) { // this insures that we only call this once per player load
+            Log.i(TAG, "Rendered first frame")
+            val invalid = exoPlayer?.duration?.let { duration ->
+                // Only errors short playback when not playing downloaded files
+                duration < 20_000L && currentDownloadedFile == null
+                        // Concatenated sources (non 1 periodCount) bypasses the invalid check as exoPlayer.duration gives only the current period
+                        // If you can get the total time that'd be better, but this is already niche.
+                        && exoPlayer?.currentTimeline?.periodCount == 1
+                        && exoPlayer?.isCurrentMediaItemLive != true
+            } ?: false
 
-        if (invalid) {
-            releasePlayer(saveTime = false)
-            playerError?.invoke(InvalidFileException("Too short playback"))
-            return
-        }
+            if (invalid) {
+                releasePlayer(saveTime = false)
+                playerError?.invoke(InvalidFileException("Too short playback"))
+                return
+            }
 
-        setPreferredSubtitles(currentSubtitles)
-        val format = exoPlayer?.videoFormat
-        val width = format?.width
-        val height = format?.height
-        if (height != null && width != null) {
-            playerDimensionsLoaded?.invoke(Pair(width, height))
-            updatedTime()
-            exoPlayer?.apply {
-                requestedListeningPercentages?.forEach { percentage ->
-                    createMessage { _, _ ->
-                        updatedTime()
+            setPreferredSubtitles(currentSubtitles)
+            hasUsedFirstRender = true
+            val format = exoPlayer?.videoFormat
+            val width = format?.width
+            val height = format?.height
+            if (height != null && width != null) {
+                playerDimensionsLoaded?.invoke(Pair(width, height))
+                updatedTime()
+                exoPlayer?.apply {
+                    requestedListeningPercentages?.forEach { percentage ->
+                        createMessage { _, _ ->
+                            updatedTime()
+                        }
+                            .setLooper(Looper.getMainLooper())
+                            .setPosition( /* positionMs= */contentDuration * percentage / 100)
+                            //   .setPayload(customPayloadData)
+                            .setDeleteAfterDelivery(false)
+                            .send()
                     }
-                        .setLooper(Looper.getMainLooper())
-                        .setPosition(contentDuration * percentage / 100)
-                        //   .setPayload(customPayloadData)
-                        .setDeleteAfterDelivery(false)
-                        .send()
                 }
             }
         }
@@ -1196,7 +1169,6 @@ class CS3IPlayer : IPlayer {
                         null
                     }
                 }
-
                 SubtitleOrigin.URL -> {
                     if (onlineSourceFactory != null) {
                         activeSubtitles.add(sub)
@@ -1209,7 +1181,6 @@ class CS3IPlayer : IPlayer {
                         null
                     }
                 }
-
                 SubtitleOrigin.EMBEDDED_IN_VIDEO -> {
                     if (offlineSourceFactory != null) {
                         activeSubtitles.add(sub)

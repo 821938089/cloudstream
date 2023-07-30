@@ -12,7 +12,6 @@ import com.lagradost.cloudstream3.APIHolder.getApiProviderLangSettings
 import com.lagradost.cloudstream3.AllLanguagesName
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.databinding.FragmentPluginsBinding
 import com.lagradost.cloudstream3.mvvm.observe
 import com.lagradost.cloudstream3.ui.home.HomeFragment.Companion.bindChips
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isTvSettings
@@ -21,6 +20,9 @@ import com.lagradost.cloudstream3.ui.settings.appLanguages
 import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showMultiDialog
 import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.UIHelper.toPx
+import kotlinx.android.synthetic.main.fragment_plugins.*
+import kotlinx.android.synthetic.main.tvtypes_chips.*
+import kotlinx.android.synthetic.main.tvtypes_chips_scroll.*
 
 const val PLUGINS_BUNDLE_NAME = "name"
 const val PLUGINS_BUNDLE_URL = "url"
@@ -31,19 +33,11 @@ class PluginsFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?,
-    ): View {
-        val localBinding = FragmentPluginsBinding.inflate(inflater,container,false)
-        binding = localBinding
-        return localBinding.root//inflater.inflate(R.layout.fragment_plugins, container, false)
-    }
-
-    override fun onDestroyView() {
-        binding = null
-        super.onDestroyView()
+    ): View? {
+        return inflater.inflate(R.layout.fragment_plugins, container, false)
     }
 
     private val pluginViewModel: PluginsViewModel by activityViewModels()
-    var binding: FragmentPluginsBinding? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -72,8 +66,8 @@ class PluginsFragment : Fragment() {
         }
 
         setUpToolbar(name)
-        binding?.settingsToolbar?.apply {
-        setOnMenuItemClickListener { menuItem ->
+
+        settings_toolbar?.setOnMenuItemClickListener { menuItem ->
             when (menuItem?.itemId) {
                 R.id.download_all -> {
                     PluginsViewModel.downloadAll(activity, url, pluginViewModel)
@@ -105,69 +99,67 @@ class PluginsFragment : Fragment() {
         }
 
         val searchView =
-            menu?.findItem(R.id.search_button)?.actionView as? SearchView
+            settings_toolbar?.menu?.findItem(R.id.search_button)?.actionView as? SearchView
 
         // Don't go back if active query
-        setNavigationOnClickListener {
+        settings_toolbar?.setNavigationOnClickListener {
             if (searchView?.isIconified == false) {
                 searchView.isIconified = true
             } else {
                 activity?.onBackPressed()
             }
         }
-            searchView?.setOnQueryTextFocusChangeListener { _, hasFocus ->
-                if (!hasFocus) pluginViewModel.search(null)
-            }
 
-            searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(query: String?): Boolean {
-                    pluginViewModel.search(query)
-                    return true
-                }
-
-                override fun onQueryTextChange(newText: String?): Boolean {
-                    pluginViewModel.search(newText)
-                    return true
-                }
-            })
-        }
 //        searchView?.onActionViewCollapsed = {
 //            pluginViewModel.search(null)
 //        }
 
         // Because onActionViewCollapsed doesn't wanna work we need this workaround :(
+        searchView?.setOnQueryTextFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) pluginViewModel.search(null)
+        }
+
+        searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                pluginViewModel.search(query)
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                pluginViewModel.search(newText)
+                return true
+            }
+        })
 
 
-
-        binding?.pluginRecyclerView?.adapter =
+        plugin_recycler_view?.adapter =
             PluginAdapter {
                 pluginViewModel.handlePluginAction(activity, url, it, isLocal)
             }
 
         if (isTvSettings()) {
             // Scrolling down does not reveal the whole RecyclerView on TV, add to bypass that.
-            binding?.pluginRecyclerView?.setPadding(0, 0, 0, 200.toPx)
+            plugin_recycler_view?.setPadding(0, 0, 0, 200.toPx)
         }
 
         observe(pluginViewModel.filteredPlugins) { (scrollToTop, list) ->
-            (binding?.pluginRecyclerView?.adapter as? PluginAdapter)?.updateList(list)
+            (plugin_recycler_view?.adapter as? PluginAdapter)?.updateList(list)
 
             if (scrollToTop)
-                binding?.pluginRecyclerView?.scrollToPosition(0)
+                plugin_recycler_view?.scrollToPosition(0)
         }
 
         if (isLocal) {
             // No download button and no categories on local
-            binding?.settingsToolbar?.menu?.findItem(R.id.download_all)?.isVisible = false
-            binding?.settingsToolbar?.menu?.findItem(R.id.lang_filter)?.isVisible = false
+            settings_toolbar?.menu?.findItem(R.id.download_all)?.isVisible = false
+            settings_toolbar?.menu?.findItem(R.id.lang_filter)?.isVisible = false
             pluginViewModel.updatePluginListLocal()
-
-            binding?.tvtypesChipsScroll?.root?.isVisible = false
+            tv_types_scroll_view?.isVisible = false
         } else {
             pluginViewModel.updatePluginList(context, url)
-            binding?.tvtypesChipsScroll?.root?.isVisible = true
+            tv_types_scroll_view?.isVisible = true
 
-            bindChips(binding?.tvtypesChipsScroll?.tvtypesChips, emptyList(), TvType.values().toList()) { list ->
+            bindChips(home_select_group, emptyList(), TvType.values().toList()) { list ->
                 pluginViewModel.tvTypes.clear()
                 pluginViewModel.tvTypes.addAll(list.map { it.name })
                 pluginViewModel.updateFilteredPlugins()

@@ -300,7 +300,7 @@ class InAppUpdater {
                                     // Forcefully start any delayed installations
                                     if (ApkInstaller.delayedInstaller?.startInstallation() == true) return@setPositiveButton
 
-                                    showToast(R.string.download_started, Toast.LENGTH_LONG)
+                                    showToast(context, R.string.download_started, Toast.LENGTH_LONG)
 
                                     // Check if the setting hasn't been changed
                                     if (settingsManager.getInt(
@@ -335,6 +335,7 @@ class InAppUpdater {
                                                 if (!downloadUpdate(update.updateURL))
                                                     runOnUiThread {
                                                         showToast(
+                                                            context,
                                                             R.string.download_failed,
                                                             Toast.LENGTH_LONG
                                                         )

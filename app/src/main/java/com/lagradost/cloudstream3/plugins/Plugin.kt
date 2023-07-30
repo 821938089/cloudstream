@@ -36,9 +36,7 @@ abstract class Plugin {
         Log.i(PLUGIN_TAG, "Adding ${element.name} (${element.mainUrl}) MainAPI")
         element.sourcePlugin = this.__filename
         // Race condition causing which would case duplicates if not for distinctBy
-        synchronized(APIHolder.allProviders) {
-            APIHolder.allProviders.add(element)
-        }
+        APIHolder.allProviders.add(element)
         APIHolder.addPluginMapping(element)
     }
 
@@ -53,14 +51,10 @@ abstract class Plugin {
     }
 
     class Manifest {
-        @JsonProperty("name")
-        var name: String? = null
-        @JsonProperty("pluginClassName")
-        var pluginClassName: String? = null
-        @JsonProperty("version")
-        var version: Int? = null
-        @JsonProperty("requiresResources")
-        var requiresResources: Boolean = false
+        @JsonProperty("name") var name: String? = null
+        @JsonProperty("pluginClassName") var pluginClassName: String? = null
+        @JsonProperty("version") var version: Int? = null
+        @JsonProperty("requiresResources") var requiresResources: Boolean = false
     }
 
     /**

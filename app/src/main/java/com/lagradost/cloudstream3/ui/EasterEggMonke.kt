@@ -16,16 +16,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.view.isVisible
 import com.lagradost.cloudstream3.R
-import com.lagradost.cloudstream3.databinding.ActivityEasterEggMonkeBinding
+import kotlinx.android.synthetic.main.activity_easter_egg_monke.*
+import java.util.*
 
 class EasterEggMonke : AppCompatActivity() {
 
-    lateinit var binding : ActivityEasterEggMonkeBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        binding = ActivityEasterEggMonkeBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_easter_egg_monke)
 
         val handler = Handler(mainLooper)
         lateinit var runnable: Runnable
@@ -34,14 +32,15 @@ class EasterEggMonke : AppCompatActivity() {
             handler.postDelayed(runnable, 300)
         }
         handler.postDelayed(runnable, 1000)
+
     }
 
     private fun shower() {
 
-        val containerW = binding.frame.width
-        val containerH = binding.frame.height
-        var starW: Float = binding.monke.width.toFloat()
-        var starH: Float = binding.monke.height.toFloat()
+        val containerW = frame.width
+        val containerH = frame.height
+        var starW: Float = monke.width.toFloat()
+        var starH: Float = monke.height.toFloat()
 
         val newStar = AppCompatImageView(this)
         val idx = (monkeys.size * Math.random()).toInt()
@@ -49,7 +48,7 @@ class EasterEggMonke : AppCompatActivity() {
         newStar.isVisible = true
         newStar.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
             FrameLayout.LayoutParams.WRAP_CONTENT)
-        binding.frame.addView(newStar)
+        frame.addView(newStar)
 
         newStar.scaleX = Math.random().toFloat() * 1.5f +  newStar.scaleX
         newStar.scaleY = newStar.scaleX
@@ -71,7 +70,7 @@ class EasterEggMonke : AppCompatActivity() {
 
         set.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
-                binding.frame.removeView(newStar)
+                frame.removeView(newStar)
             }
         })
 

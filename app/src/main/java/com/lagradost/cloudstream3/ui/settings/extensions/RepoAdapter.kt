@@ -1,15 +1,14 @@
 package com.lagradost.cloudstream3.ui.settings.extensions
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewbinding.ViewBinding
 import com.lagradost.cloudstream3.R
-import com.lagradost.cloudstream3.databinding.RepositoryItemBinding
-import com.lagradost.cloudstream3.databinding.RepositoryItemTvBinding
 import com.lagradost.cloudstream3.plugins.RepositoryManager.PREBUILT_REPOSITORIES
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isTrueTvSettings
+import kotlinx.android.synthetic.main.repository_item.view.*
 
 class RepoAdapter(
     val isSetup: Boolean,
@@ -21,17 +20,9 @@ class RepoAdapter(
     private val repositories: MutableList<RepositoryData> = mutableListOf()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        val layout = if (isTrueTvSettings()) RepositoryItemTvBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        ) else RepositoryItemBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )  //R.layout.repository_item_tv else R.layout.repository_item
+        val layout = if(isTrueTvSettings()) R.layout.repository_item_tv else R.layout.repository_item
         return RepoViewHolder(
-            layout
+            LayoutInflater.from(parent.context).inflate(layout, parent, false)
         )
     }
 
@@ -66,57 +57,30 @@ class RepoAdapter(
         diffResult.dispatchUpdatesTo(this)
     }
 
-    inner class RepoViewHolder(
-        val binding: ViewBinding
-    ) :
-        RecyclerView.ViewHolder(binding.root) {
+    inner class RepoViewHolder(itemView: View) :
+        RecyclerView.ViewHolder(itemView) {
         fun bind(
             repositoryData: RepositoryData
         ) {
             val isPrebuilt = PREBUILT_REPOSITORIES.contains(repositoryData)
             val drawable =
                 if (isSetup) R.drawable.netflix_download else R.drawable.ic_baseline_delete_outline_24
-            when (binding) {
-                is RepositoryItemTvBinding -> {
-                    binding.apply {
-                        // Only shows icon if on setup or if it isn't a prebuilt repo.
-                        // No delete buttons on prebuilt repos.
-                        if (!isPrebuilt || isSetup) {
-                            actionButton.setImageResource(drawable)
-                        }
 
-                        actionButton.setOnClickListener {
-                            imageClickCallback(repositoryData)
-                        }
-
-                        repositoryItemRoot.setOnClickListener {
-                            clickCallback(repositoryData)
-                        }
-                        mainText.text = repositoryData.name
-                        subText.text = repositoryData.url
-                    }
-                }
-
-                is RepositoryItemBinding -> {
-                    binding.apply {
-                        // Only shows icon if on setup or if it isn't a prebuilt repo.
-                        // No delete buttons on prebuilt repos.
-                        if (!isPrebuilt || isSetup) {
-                            actionButton.setImageResource(drawable)
-                        }
-
-                        actionButton.setOnClickListener {
-                            imageClickCallback(repositoryData)
-                        }
-
-                        repositoryItemRoot.setOnClickListener {
-                            clickCallback(repositoryData)
-                        }
-                        mainText.text = repositoryData.name
-                        subText.text = repositoryData.url
-                    }
-                }
+            // Only shows icon if on setup or if it isn't a prebuilt repo.
+            // No delete buttons on prebuilt repos.
+            if (!isPrebuilt || isSetup) {
+                itemView.action_button?.setImageResource(drawable)
             }
+
+            itemView.action_button?.setOnClickListener {
+                imageClickCallback(repositoryData)
+            }
+
+            itemView.repository_item_root?.setOnClickListener {
+                clickCallback(repositoryData)
+            }
+            itemView.main_text?.text = repositoryData.name
+            itemView.sub_text?.text = repositoryData.url
         }
     }
 }

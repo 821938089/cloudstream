@@ -14,45 +14,33 @@ import com.lagradost.cloudstream3.APIHolder
 import com.lagradost.cloudstream3.APIHolder.getApiProviderLangSettings
 import com.lagradost.cloudstream3.AllLanguagesName
 import com.lagradost.cloudstream3.R
-import com.lagradost.cloudstream3.databinding.FragmentSetupProviderLanguagesBinding
-import com.lagradost.cloudstream3.mvvm.normalSafeApiCall
 import com.lagradost.cloudstream3.utils.SubtitleHelper
 import com.lagradost.cloudstream3.utils.UIHelper.fixPaddingStatusbar
+import kotlinx.android.synthetic.main.fragment_setup_media.*
 
 class SetupFragmentProviderLanguage : Fragment() {
-    var binding: FragmentSetupProviderLanguagesBinding? = null
-
-    override fun onDestroyView() {
-        binding = null
-        super.onDestroyView()
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        val localBinding = FragmentSetupProviderLanguagesBinding.inflate(inflater, container, false)
-        binding = localBinding
-        return localBinding.root
-        //return inflater.inflate(R.layout.fragment_setup_provider_languages, container, false)
+    ): View? {
+        // Inflate the layout for this fragment
+        return inflater.inflate(R.layout.fragment_setup_provider_languages, container, false)
     }
-
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        fixPaddingStatusbar(binding?.setupRoot)
+        context?.fixPaddingStatusbar(setup_root)
 
-        normalSafeApiCall {
-            val ctx = context ?: return@normalSafeApiCall
-
-            val settingsManager = PreferenceManager.getDefaultSharedPreferences(ctx)
+        with(context) {
+            if (this == null) return
+            val settingsManager = PreferenceManager.getDefaultSharedPreferences(this)
 
             val arrayAdapter =
-                ArrayAdapter<String>(ctx, R.layout.sort_bottom_single_choice)
+                ArrayAdapter<String>(this, R.layout.sort_bottom_single_choice)
 
-            val current = ctx.getApiProviderLangSettings()
-            val langs = synchronized(APIHolder.apis) { APIHolder.apis.map { it.lang }.toSet()
-                .sortedBy { SubtitleHelper.fromTwoLettersToLanguage(it) } + AllLanguagesName}
+            val current = this.getApiProviderLangSettings()
+            val langs = APIHolder.apis.map { it.lang }.toSet()
+                .sortedBy { SubtitleHelper.fromTwoLettersToLanguage(it) } + AllLanguagesName
 
             val currentList =
                 current.map { langs.indexOf(it) }.filter { it != -1 } // TODO LOOK INTO
@@ -68,31 +56,31 @@ class SetupFragmentProviderLanguage : Fragment() {
             }
 
             arrayAdapter.addAll(languageNames)
-            binding?.apply {
-            listview1.adapter = arrayAdapter
-            listview1.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
+
+            listview1?.adapter = arrayAdapter
+            listview1?.choiceMode = AbsListView.CHOICE_MODE_MULTIPLE
             currentList.forEach {
                 listview1.setItemChecked(it, true)
             }
 
-            listview1.setOnItemClickListener { _, _, _, _ ->
+            listview1?.setOnItemClickListener { _, _, _, _ ->
                 val currentLanguages = mutableListOf<String>()
-                listview1.checkedItemPositions?.forEach { key, value ->
+                listview1?.checkedItemPositions?.forEach { key, value ->
                     if (value) currentLanguages.add(langs[key])
                 }
                 settingsManager.edit().putStringSet(
-                    ctx.getString(R.string.provider_lang_key),
+                    this.getString(R.string.provider_lang_key),
                     currentLanguages.toSet()
                 ).apply()
             }
 
-            nextBtt.setOnClickListener {
+            next_btt?.setOnClickListener {
                 findNavController().navigate(R.id.navigation_setup_provider_languages_to_navigation_setup_media)
             }
 
-            prevBtt.setOnClickListener {
+            prev_btt?.setOnClickListener {
                 findNavController().popBackStack()
-            } }
+            }
         }
     }
 

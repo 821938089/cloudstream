@@ -8,17 +8,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.annotation.StringRes
-import androidx.core.view.children
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
-import com.google.android.material.appbar.MaterialToolbar
 import com.lagradost.cloudstream3.R
-import com.lagradost.cloudstream3.databinding.MainSettingsBinding
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.syncproviders.AccountManager.Companion.accountManagers
 import com.lagradost.cloudstream3.ui.home.HomeFragment
@@ -26,14 +22,16 @@ import com.lagradost.cloudstream3.utils.UIHelper.fixPaddingStatusbar
 import com.lagradost.cloudstream3.utils.UIHelper.navigate
 import com.lagradost.cloudstream3.utils.UIHelper.setImage
 import com.lagradost.cloudstream3.utils.UIHelper.toPx
+import kotlinx.android.synthetic.main.main_settings.*
+import kotlinx.android.synthetic.main.standard_toolbar.*
 import java.io.File
 
 class SettingsFragment : Fragment() {
     companion object {
         var beneneCount = 0
 
-        private var isTv: Boolean = false
-        private var isTrueTv: Boolean = false
+        private var isTv : Boolean = false
+        private var isTrueTv : Boolean = false
 
         fun PreferenceFragmentCompat?.getPref(id: Int): Preference? {
             if (this == null) return null
@@ -57,31 +55,26 @@ class SettingsFragment : Fragment() {
 
         fun Fragment?.setUpToolbar(title: String) {
             if (this == null) return
-            val settingsToolbar = view?.findViewById<MaterialToolbar>(R.id.settings_toolbar) ?: return
-
-            settingsToolbar.apply {
+            settings_toolbar?.apply {
                 setTitle(title)
                 setNavigationIcon(R.drawable.ic_baseline_arrow_back_24)
                 setNavigationOnClickListener {
                     activity?.onBackPressed()
                 }
             }
-            fixPaddingStatusbar(settingsToolbar)
+            context.fixPaddingStatusbar(settings_toolbar)
         }
 
         fun Fragment?.setUpToolbar(@StringRes title: Int) {
             if (this == null) return
-            val settingsToolbar = view?.findViewById<MaterialToolbar>(R.id.settings_toolbar) ?: return
-
-            settingsToolbar.apply {
+            settings_toolbar?.apply {
                 setTitle(title)
                 setNavigationIcon(R.drawable.ic_baseline_arrow_back_24)
-                children.firstOrNull { it is ImageView }?.tag = getString(R.string.tv_no_focus_tag)
                 setNavigationOnClickListener {
                     activity?.onBackPressed()
                 }
             }
-            fixPaddingStatusbar(settingsToolbar)
+            context.fixPaddingStatusbar(settings_toolbar)
         }
 
         fun getFolderSize(dir: File): Long {
@@ -146,21 +139,12 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        binding = null
-        super.onDestroyView()
-    }
-
-    var binding: MainSettingsBinding? = null
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?,
-    ): View {
-        val localBinding = MainSettingsBinding.inflate(inflater, container, false)
-        binding = localBinding
-        return localBinding.root
-        //return inflater.inflate(R.layout.main_settings, container, false)
+    ): View? {
+        return inflater.inflate(R.layout.main_settings, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -168,41 +152,41 @@ class SettingsFragment : Fragment() {
             activity?.navigate(id, Bundle())
         }
 
-        // used to debug leaks showToast(activity,"${VideoDownloadManager.downloadStatusEvent.size} : ${VideoDownloadManager.downloadProgressEvent.size}")
-
         val isTrueTv = isTrueTvSettings()
 
         for (syncApi in accountManagers) {
             val login = syncApi.loginInfo()
             val pic = login?.profilePicture ?: continue
-            if (binding?.settingsProfilePic?.setImage(
+            if (settings_profile_pic?.setImage(
                     pic,
                     errorImageDrawable = HomeFragment.errorProfilePic
                 ) == true
             ) {
-                binding?.settingsProfileText?.text = login.name
-                binding?.settingsProfile?.isVisible = true
+                settings_profile_text?.text = login.name
+                settings_profile?.isVisible = true
                 break
             }
         }
-        binding?.apply {
-            listOf(
-                settingsGeneral to R.id.action_navigation_settings_to_navigation_settings_general,
-                settingsPlayer to R.id.action_navigation_settings_to_navigation_settings_player,
-                settingsCredits to R.id.action_navigation_settings_to_navigation_settings_account,
-                settingsUi to R.id.action_navigation_settings_to_navigation_settings_ui,
-                settingsProviders to R.id.action_navigation_settings_to_navigation_settings_providers,
-                settingsUpdates to R.id.action_navigation_settings_to_navigation_settings_updates,
-                settingsExtensions to R.id.action_navigation_settings_to_navigation_settings_extensions,
-            ).forEach { (view, navigationId) ->
-                view.apply {
-                    setOnClickListener {
-                        navigate(navigationId)
-                    }
-                    if (isTrueTv) {
-                        isFocusable = true
-                        isFocusableInTouchMode = true
-                    }
+
+        listOf(
+            Pair(settings_general, R.id.action_navigation_settings_to_navigation_settings_general),
+            Pair(settings_player, R.id.action_navigation_settings_to_navigation_settings_player),
+            Pair(settings_credits, R.id.action_navigation_settings_to_navigation_settings_account),
+            Pair(settings_ui, R.id.action_navigation_settings_to_navigation_settings_ui),
+            Pair(settings_providers, R.id.action_navigation_settings_to_navigation_settings_providers),
+            Pair(settings_updates, R.id.action_navigation_settings_to_navigation_settings_updates),
+            Pair(
+                settings_extensions,
+                R.id.action_navigation_settings_to_navigation_settings_extensions
+            ),
+        ).forEach { (view, navigationId) ->
+            view?.apply {
+                setOnClickListener {
+                    navigate(navigationId)
+                }
+                if (isTrueTv) {
+                    isFocusable = true
+                    isFocusableInTouchMode = true
                 }
             }
         }

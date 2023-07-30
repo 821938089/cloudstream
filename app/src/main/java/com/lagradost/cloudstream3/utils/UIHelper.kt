@@ -46,16 +46,11 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions.bitmapTransform
 import com.bumptech.glide.request.target.Target
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipDrawable
-import com.google.android.material.chip.ChipGroup
-import com.lagradost.cloudstream3.CommonActivity.activity
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.ui.result.UiImage
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isEmulatorSettings
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isTvSettings
-import com.lagradost.cloudstream3.utils.UIHelper.colorFromAttribute
 import jp.wasabeef.glide.transformations.BlurTransformation
 import kotlin.math.roundToInt
 
@@ -75,30 +70,6 @@ object UIHelper {
                 // Since Android 13, we can't request external storage permission,
                 // so don't check it.
                 || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-    }
-
-    fun populateChips(view: ChipGroup?, tags : List<String>) {
-        if(view == null) return
-        view.removeAllViews()
-        val context = view.context ?: return
-
-        tags.forEach { tag ->
-            val chip = Chip(context)
-            val chipDrawable = ChipDrawable.createFromAttributes(
-                context,
-                null,
-                0,
-                R.style.ChipFilled
-            )
-            chip.setChipDrawable(chipDrawable)
-            chip.text = tag
-            chip.isChecked = false
-            chip.isCheckable = false
-            chip.isFocusable = false
-            chip.isClickable = false
-            chip.setTextColor(context.colorFromAttribute(R.attr.textColor))
-            view.addView(chip)
-        }
     }
 
     fun Activity.requestRW() {
@@ -210,69 +181,16 @@ object UIHelper {
         }
     }
 
-    /*inline fun <reified T : ViewBinding> bindViewBinding(
-        inflater: LayoutInflater?,
-        container: ViewGroup?,
-        layout: Int
-    ): Pair<T?, UiText?> {
-        return try {
-            val localInflater = inflater ?: container?.context?.let { LayoutInflater.from(it) }
-            ?: return null to txt(
-                R.string.unable_to_inflate,
-                "Requires inflater OR container"
-            )//throw IllegalArgumentException("Requires inflater OR container"))
-
-            //println("methods: ${T::class.java.methods.map { it.name }}")
-            val bind = T::class.java.methods.first { it.name == "bind" }
-            //val inflate = T::class.java.methods.first { it.name == "inflate" }
-            val root = localInflater.inflate(layout, container, false)
-            bind.invoke(null, root) as T to null
-        } catch (t: Throwable) {
-            logError(t)
-            val message = txt(R.string.unable_to_inflate, t.message ?: "Primary constructor")
-            // if the desired layout is not found then we inflate the casted layout
-            /*try {
-                val localInflater = inflater ?: container?.context?.let { LayoutInflater.from(it) }
-                ?: return null to txt(
-                    R.string.unable_to_inflate,
-                    "Requires inflater OR container"
-                )//throw IllegalArgumentException("Requires inflater OR container"))
-
-                // we don't know what method to use as there are 2, but first *should* always be true
-                return try {
-                    val inflate = T::class.java.methods.first { it.name == "inflate" }
-                    inflate.invoke(null, localInflater, container, false) as T
-                } catch (_: Throwable) {
-                    val inflate = T::class.java.methods.last { it.name == "inflate" }
-                    inflate.invoke(null, localInflater, container, false) as T
-                } to message
-            } catch (t: Throwable) {
-                logError(t)
-            }*/
-
-            null to message
-        }
-    }*/
-
     fun ImageView?.setImage(
         url: String?,
         headers: Map<String, String>? = null,
         @DrawableRes
         errorImageDrawable: Int? = null,
         fadeIn: Boolean = true,
-        radius: Int = 0,
-        sample: Int = 3,
         colorCallback: ((Palette) -> Unit)? = null
     ): Boolean {
         if (url.isNullOrBlank()) return false
-        this.setImage(
-            UiImage.Image(url, headers, errorImageDrawable),
-            errorImageDrawable,
-            fadeIn,
-            radius,
-            sample,
-            colorCallback
-        )
+        this.setImage(UiImage.Image(url, headers, errorImageDrawable), errorImageDrawable, fadeIn, colorCallback)
         return true
     }
 
@@ -281,9 +199,7 @@ object UIHelper {
         @DrawableRes
         errorImageDrawable: Int? = null,
         fadeIn: Boolean = true,
-        radius: Int = 0,
-        sample: Int = 3,
-        colorCallback: ((Palette) -> Unit)? = null,
+        colorCallback: ((Palette) -> Unit)? = null
     ): Boolean {
         if (this == null || uiImage == null) return false
 
@@ -295,7 +211,7 @@ object UIHelper {
             } ?: return false
 
         return try {
-            var builder = GlideApp.with(this)
+            val builder = GlideApp.with(this)
                 .load(glideImage)
                 .skipMemoryCache(true)
                 .diskCacheStrategy(DiskCacheStrategy.ALL).let { req ->
@@ -304,12 +220,8 @@ object UIHelper {
                     else req
                 }
 
-            if(radius > 0) {
-                builder = builder.apply(bitmapTransform(BlurTransformation(radius, sample)))
-            }
-
             if (colorCallback != null) {
-                builder = builder.listener(object : RequestListener<Drawable> {
+                builder.listener(object : RequestListener<Drawable> {
                     @SuppressLint("CheckResult")
                     override fun onResourceReady(
                         resource: Drawable?,
@@ -485,22 +397,21 @@ object UIHelper {
         return result
     }
 
-    fun fixPaddingStatusbar(v: View?) {
-        if (v == null) return
-        val ctx = v.context ?: return
+    fun Context?.fixPaddingStatusbar(v: View?) {
+        if (v == null || this == null) return
         v.setPadding(
             v.paddingLeft,
-            v.paddingTop + ctx.getStatusBarHeight(),
+            v.paddingTop + getStatusBarHeight(),
             v.paddingRight,
             v.paddingBottom
         )
     }
 
-    fun fixPaddingStatusbarView(v: View?) {
+    fun Context.fixPaddingStatusbarView(v: View?) {
         if (v == null) return
-        val ctx = v.context ?: return
+
         val params = v.layoutParams
-        params.height = ctx.getStatusBarHeight()
+        params.height = getStatusBarHeight()
         v.layoutParams = params
     }
 
@@ -593,7 +504,7 @@ object UIHelper {
     }
 
     fun Dialog?.dismissSafe() {
-        if (this?.isShowing == true && activity?.isFinishing != true) {
+        if (this?.isShowing == true) {
             this.dismiss()
         }
     }

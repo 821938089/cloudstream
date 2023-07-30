@@ -10,8 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.R
 import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.databinding.AccountSingleBinding
-import com.lagradost.cloudstream3.databinding.SearchHistoryItemBinding
+import kotlinx.android.synthetic.main.search_history_item.view.*
 
 data class SearchHistoryItem(
     @JsonProperty("searchedAt") val searchedAt: Long,
@@ -35,7 +34,8 @@ class SearchHistoryAdaptor(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return CardViewHolder(
-            SearchHistoryItemBinding.inflate(LayoutInflater.from(parent.context), parent, false),
+            LayoutInflater.from(parent.context)
+                .inflate(R.layout.search_history_item, parent, false),
             clickCallback,
         )
     }
@@ -65,24 +65,22 @@ class SearchHistoryAdaptor(
 
     class CardViewHolder
     constructor(
-        val binding: SearchHistoryItemBinding,
+        itemView: View,
         private val clickCallback: (SearchHistoryCallback) -> Unit,
     ) :
-        RecyclerView.ViewHolder(binding.root) {
-        //  private val removeButton: ImageView = itemView.home_history_remove
-        //  private val openButton: View = itemView.home_history_tab
-        // private val title: TextView = itemView.home_history_title
+        RecyclerView.ViewHolder(itemView) {
+        private val removeButton: ImageView = itemView.home_history_remove
+        private val openButton: View = itemView.home_history_tab
+        private val title: TextView = itemView.home_history_title
 
         fun bind(card: SearchHistoryItem) {
-            binding.apply {
-                homeHistoryTitle.text = card.searchText
+            title.text = card.searchText
 
-                homeHistoryRemove.setOnClickListener {
-                    clickCallback.invoke(SearchHistoryCallback(card, SEARCH_HISTORY_REMOVE))
-                }
-                homeHistoryTab.setOnClickListener {
-                    clickCallback.invoke(SearchHistoryCallback(card, SEARCH_HISTORY_OPEN))
-                }
+            removeButton.setOnClickListener {
+                clickCallback.invoke(SearchHistoryCallback(card, SEARCH_HISTORY_REMOVE))
+            }
+            openButton.setOnClickListener {
+                clickCallback.invoke(SearchHistoryCallback(card, SEARCH_HISTORY_OPEN))
             }
         }
     }

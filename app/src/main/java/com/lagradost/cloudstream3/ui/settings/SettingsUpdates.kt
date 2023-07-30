@@ -13,7 +13,6 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import com.lagradost.cloudstream3.CommonActivity.showToast
 import com.lagradost.cloudstream3.R
-import com.lagradost.cloudstream3.databinding.LogcatBinding
 import com.lagradost.cloudstream3.mvvm.logError
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.getPref
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.setPaddingBottom
@@ -26,6 +25,7 @@ import com.lagradost.cloudstream3.utils.SingleSelectionHelper.showBottomDialog
 import com.lagradost.cloudstream3.utils.UIHelper.dismissSafe
 import com.lagradost.cloudstream3.utils.UIHelper.hideKeyboard
 import com.lagradost.cloudstream3.utils.VideoDownloadManager
+import kotlinx.android.synthetic.main.logcat.*
 import okhttp3.internal.closeQuietly
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -60,9 +60,7 @@ class SettingsUpdates : PreferenceFragmentCompat() {
         getPref(R.string.show_logcat_key)?.setOnPreferenceClickListener { pref ->
             val builder =
                 AlertDialog.Builder(pref.context, R.style.AlertDialogCustom)
-
-            val binding = LogcatBinding.inflate(layoutInflater,null,false )
-            builder.setView(binding.root)
+                    .setView(R.layout.logcat)
 
             val dialog = builder.create()
             dialog.show()
@@ -83,9 +81,9 @@ class SettingsUpdates : PreferenceFragmentCompat() {
             }
 
             val text = log.toString()
-            binding.text1.text = text
+            dialog.text1?.text = text
 
-            binding.copyBtt.setOnClickListener {
+            dialog.copy_btt?.setOnClickListener {
                 // Can crash on too much text
                 try {
                     val serviceClipboard =
@@ -95,14 +93,14 @@ class SettingsUpdates : PreferenceFragmentCompat() {
                     serviceClipboard.setPrimaryClip(clip)
                     dialog.dismissSafe(activity)
                 } catch (e: TransactionTooLargeException) {
-                    showToast(R.string.clipboard_too_large)
+                    showToast(activity, R.string.clipboard_too_large)
                 }
             }
-            binding.clearBtt.setOnClickListener {
+            dialog.clear_btt?.setOnClickListener {
                 Runtime.getRuntime().exec("logcat -c")
                 dialog.dismissSafe(activity)
             }
-            binding.saveBtt.setOnClickListener {
+            dialog.save_btt?.setOnClickListener {
                 var fileStream: OutputStream? = null
                 try {
                     fileStream =
@@ -121,7 +119,7 @@ class SettingsUpdates : PreferenceFragmentCompat() {
                     dialog.dismissSafe(activity)
                 }
             }
-            binding.closeBtt.setOnClickListener {
+            dialog.close_btt?.setOnClickListener {
                 dialog.dismissSafe(activity)
             }
             return@setOnPreferenceClickListener true
@@ -158,6 +156,7 @@ class SettingsUpdates : PreferenceFragmentCompat() {
                 if (activity?.runAutoUpdate(false) == false) {
                     activity?.runOnUiThread {
                         showToast(
+                            activity,
                             R.string.no_update_found,
                             Toast.LENGTH_SHORT
                         )

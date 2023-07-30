@@ -163,8 +163,7 @@ object PluginManager {
     private val classLoaders: MutableMap<PathClassLoader, Plugin> =
         HashMap<PathClassLoader, Plugin>()
 
-    var loadedLocalPlugins = false
-        private set
+    private var loadedLocalPlugins = false
     private val gson = Gson()
 
     private suspend fun maybeLoadPlugin(context: Context, file: File) {
@@ -532,14 +531,10 @@ object PluginManager {
         }
 
         // remove all registered apis
-        synchronized(APIHolder.apis) {
-            APIHolder.apis.filter { api -> api.sourcePlugin == plugin.__filename }.forEach {
-                removePluginMapping(it)
-            }
+        APIHolder.apis.filter { api -> api.sourcePlugin == plugin.__filename }.forEach {
+            removePluginMapping(it)
         }
-        synchronized(APIHolder.allProviders) {
-            APIHolder.allProviders.removeIf { provider: MainAPI -> provider.sourcePlugin == plugin.__filename }
-        }
+        APIHolder.allProviders.removeIf { provider: MainAPI -> provider.sourcePlugin == plugin.__filename }
         extractorApis.removeIf { provider: ExtractorApi -> provider.sourcePlugin == plugin.__filename }
 
         classLoaders.values.removeIf { v -> v == plugin }

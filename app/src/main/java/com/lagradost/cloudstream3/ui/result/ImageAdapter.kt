@@ -1,10 +1,11 @@
 package com.lagradost.cloudstream3.ui.result
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.lagradost.cloudstream3.databinding.ResultMiniImageBinding
 import com.lagradost.cloudstream3.ui.settings.SettingsFragment.Companion.isTrueTvSettings
 
 /*
@@ -23,6 +24,7 @@ const val IMAGE_CLICK = 0
 const val IMAGE_LONG_CLICK = 1
 
 class ImageAdapter(
+    val layout: Int,
     val clickCallback: ((Int) -> Unit)? = null,
     val nextFocusUp: Int? = null,
     val nextFocusDown: Int? = null,
@@ -32,9 +34,7 @@ class ImageAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return ImageViewHolder(
-            //result_mini_image
-            ResultMiniImageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-           // LayoutInflater.from(parent.context).inflate(layout, parent, false)
+            LayoutInflater.from(parent.context).inflate(layout, parent, false)
         )
     }
 
@@ -66,15 +66,15 @@ class ImageAdapter(
     }
 
     class ImageViewHolder
-    constructor(val binding: ResultMiniImageBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    constructor(itemView: View) :
+        RecyclerView.ViewHolder(itemView) {
         fun bind(
             img: Int,
             clickCallback: ((Int) -> Unit)?,
             nextFocusUp: Int?,
             nextFocusDown: Int?,
         ) {
-            binding.root.apply {
+            (itemView as? ImageView?)?.apply {
                 setImageResource(img)
                 if (nextFocusDown != null) {
                     this.nextFocusDownId = nextFocusDown
